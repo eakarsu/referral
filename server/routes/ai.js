@@ -368,4 +368,52 @@ Make all messages feel personal and high-value, not transactional.`;
   }
 });
 
+// AI Contact Sync Assistant - help map external CRM/email contact dumps into the referral schema
+router.post('/contact-sync-assistant', auth, async (req, res) => {
+  try {
+    const { source, sampleRecord, targetSchema } = req.body;
+    if (!sampleRecord) {
+      return res.status(400).json({ error: 'sampleRecord is required' });
+    }
+    const systemPrompt = `You assist with importing contacts into a referral relationship platform. Given a sample external record and the target schema, propose a field mapping, deduplication strategy, and data-quality issues. Output sections: Field Mapping, Required Transformations, Likely Duplicates Strategy, Data Quality Concerns, Suggested Default Values. Output as plain text with clear section headers.`;
+    const result = await callOpenRouter(
+      [{ role: 'user', content: `Source: ${source || 'unspecified'}\nSample Record:\n${JSON.stringify(sampleRecord, null, 2)}\nTarget Schema:\n${JSON.stringify(targetSchema || { contacts: ['name', 'email', 'phone', 'relationship', 'tags'] }, null, 2)}` }],
+      systemPrompt
+    );
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// AI Network Health Analyzer - assess overall network strength and surface gaps
+router.post('/network-health-analyzer', auth, async (req, res) => {
+  try {
+    const { contacts, recentInteractions, goals } = req.body;
+    const systemPrompt = `You are a relationship strategist applying Patrick Bet-David's referral principles. Assess the user's overall network health (breadth, depth, recency, diversity) and surface gaps relative to their goals. Output sections: Health Score (0-100 with reasoning), Strengths, Gaps, Top 5 Reactivation Targets, 30-Day Action Plan.`;
+    const result = await callOpenRouter(
+      [{ role: 'user', content: `Goals: ${goals || 'general referral growth'}\nContacts (${(contacts || []).length} total):\n${JSON.stringify((contacts || []).slice(0, 50), null, 2)}\nRecent Interactions:\n${JSON.stringify((recentInteractions || []).slice(0, 50), null, 2)}` }],
+      systemPrompt
+    );
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// AI Referral Source Attribution - analyze closed deals/referrals to attribute and rank sources
+router.post('/referral-source-attribution', auth, async (req, res) => {
+  try {
+    const { referrals, deals, period } = req.body;
+    const systemPrompt = `You analyze referral source performance. Given referral and closed-deal data, attribute revenue/value to sources, rank them, identify patterns (best-performing relationship types, response times, conversion lags), and suggest where to invest more. Output sections: Top Sources Ranked, Key Patterns, Underperforming Sources, Recommended Investments, Suggested Tracking Improvements.`;
+    const result = await callOpenRouter(
+      [{ role: 'user', content: `Period: ${period || 'last 90 days'}\nReferrals (${(referrals || []).length}):\n${JSON.stringify((referrals || []).slice(0, 100), null, 2)}\nDeals (${(deals || []).length}):\n${JSON.stringify((deals || []).slice(0, 100), null, 2)}` }],
+      systemPrompt
+    );
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

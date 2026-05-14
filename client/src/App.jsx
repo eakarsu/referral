@@ -1,9 +1,21 @@
+// === Batch 11 Gaps & Frontend Mounts ===
+import GapContactSyncAssistantPage from './pages/gap/GapContactSyncAssistantPage'
+import GapNetworkHealthGraphPage from './pages/gap/GapNetworkHealthGraphPage'
+import GapReferralRoiAttributionPage from './pages/gap/GapReferralRoiAttributionPage'
+import GapRelationshipChurnPage from './pages/gap/GapRelationshipChurnPage'
+import GapCrmIntegrationPage from './pages/gap/GapCrmIntegrationPage'
+import GapEmailSmsExecutionPage from './pages/gap/GapEmailSmsExecutionPage'
+import GapCommissionTrackingPage from './pages/gap/GapCommissionTrackingPage'
+import GapMobileAppPage from './pages/gap/GapMobileAppPage'
+import GapCalendarSyncPage from './pages/gap/GapCalendarSyncPage'
+import GapBulkImportPage from './pages/gap/GapBulkImportPage'
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import FeaturePage from './pages/FeaturePage';
 import AICoach from './pages/AICoach';
+import AINetworkTools from './pages/AINetworkTools';
 import Sidebar from './components/Sidebar';
 
 export default function App() {
@@ -51,8 +63,20 @@ export default function App() {
           <Route path="/rewards" element={<FeaturePage feature="rewards" title="Referral Rewards" />} />
           <Route path="/pipeline" element={<FeaturePage feature="pipeline" title="Referral Pipeline" />} />
           <Route path="/ai-coach" element={<AICoach />} />
+          <Route path="/ai-network-tools" element={<AINetworkTools />} />
           <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
+              {/* === Batch 11 Gaps & Frontend Mounts === */}
+        <Route path="/gap/contact-sync-assistant" element={<GapContactSyncAssistantPage />} />
+        <Route path="/gap/network-health-graph" element={<GapNetworkHealthGraphPage />} />
+        <Route path="/gap/referral-roi-attribution" element={<GapReferralRoiAttributionPage />} />
+        <Route path="/gap/relationship-churn" element={<GapRelationshipChurnPage />} />
+        <Route path="/gap/crm-integration" element={<GapCrmIntegrationPage />} />
+        <Route path="/gap/email-sms-execution" element={<GapEmailSmsExecutionPage />} />
+        <Route path="/gap/commission-tracking" element={<GapCommissionTrackingPage />} />
+        <Route path="/gap/mobile-app" element={<GapMobileAppPage />} />
+        <Route path="/gap/calendar-sync" element={<GapCalendarSyncPage />} />
+        <Route path="/gap/bulk-import" element={<GapBulkImportPage />} />
+      </Routes>
       </main>
     </div>
   );

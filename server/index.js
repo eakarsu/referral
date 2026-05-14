@@ -25,10 +25,13 @@ app.use('/api/rewards', require('./routes/rewards'));
 app.use('/api/pipeline', require('./routes/pipeline'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/ai-extras', require('./routes/ai-extras'));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+app.use('/api', require('./routes/gap-features')); // === Batch 11 Gaps & Frontend Mounts ===
 
 app.listen(PORT, () => {
   console.log(`🚀 Referral Mastery Server running on port ${PORT}`);
