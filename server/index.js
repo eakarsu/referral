@@ -26,6 +26,7 @@ app.use('/api/pipeline', require('./routes/pipeline'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/ai-extras', require('./routes/ai-extras'));
+app.use('/api/partner-fatigue', require('./routes/partnerFatigue'));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

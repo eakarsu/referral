@@ -16,7 +16,13 @@ import Dashboard from './pages/Dashboard';
 import FeaturePage from './pages/FeaturePage';
 import AICoach from './pages/AICoach';
 import AINetworkTools from './pages/AINetworkTools';
+import PartnerFatigue from './pages/PartnerFatigue';
 import Sidebar from './components/Sidebar';
+
+import CodexCustomVizFeature from './pages/CodexCustomVizFeature';
+import CodexOperationsFeature from './pages/CodexOperationsFeature';
+
+import TimelineView from './pages/TimelineView';
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
@@ -37,6 +43,10 @@ export default function App() {
   if (!token) {
     return (
       <Routes>
+        <Route path="/insights/timeline" element={<TimelineView />} />
+        <Route path="/codex/custom-viz" element={<CodexCustomVizFeature />} />
+        <Route path="/codex/operations" element={<CodexOperationsFeature />} />
+
         <Route path="/login" element={<Login onLogin={handleLogin} />} />
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
@@ -64,6 +74,7 @@ export default function App() {
           <Route path="/pipeline" element={<FeaturePage feature="pipeline" title="Referral Pipeline" />} />
           <Route path="/ai-coach" element={<AICoach />} />
           <Route path="/ai-network-tools" element={<AINetworkTools />} />
+          <Route path="/partner-fatigue" element={<PartnerFatigue />} />
           <Route path="*" element={<Navigate to="/" />} />
               {/* === Batch 11 Gaps & Frontend Mounts === */}
         <Route path="/gap/contact-sync-assistant" element={<GapContactSyncAssistantPage />} />
