@@ -1,18 +1,19 @@
 const jwt = require('jsonwebtoken');
-require('dotenv').config({ path: '../../.env' });
+const pool = require('../db');
 
-const authMiddleware = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) {
-    return res.status(401).json({ error: 'Access denied. No token provided.' });
-  }
+async function auth(req, res, next) {
+  const header = req.get('authorization') || '';
+  if (!header.startsWith('Bearer ')) return res.status(401).json({ error: 'Access token required' });
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET, { issuer: 'referral-operations', audience: 'referral-web', algorithms: ['HS256'] });
+    const result = await pool.query('SELECT id,organization_id,email,name,role,active,auth_version FROM users WHERE id=$1', [payload.sub]);
+    const user = result.rows[0];
+    if (!user?.active || user.auth_version !== payload.ver) return res.status(401).json({ error: 'Session is no longer valid' });
+    req.user = { id: user.id, organizationId: user.organization_id, email: user.email, name: user.name, role: user.role };
     next();
-  } catch (err) {
-    res.status(401).json({ error: 'Invalid token.' });
-  }
-};
+  } catch { res.status(401).json({ error: 'Invalid or expired token' }); }
+}
 
-module.exports = authMiddleware;
+const roles = (...allowed) => (req, res, next) => allowed.includes(req.user?.role) ? next() : res.status(403).json({ error: 'Insufficient permissions' });
+module.exports = auth;
+module.exports.roles = roles;

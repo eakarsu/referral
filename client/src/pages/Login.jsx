@@ -7,18 +7,6 @@ export default function Login({ onLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handlePopulate = async () => {
-    try {
-      const res = await fetch('/api/auth/default-credentials');
-      const data = await res.json();
-      setEmail(data.email);
-      setPassword(data.password);
-    } catch {
-      setEmail('admin@referralmastery.com');
-      setPassword('admin123');
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -41,9 +29,8 @@ export default function Login({ onLogin }) {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold gradient-text mb-2">Referral Mastery</h1>
-          <p className="text-slate-400">Master The Art Of Referrals</p>
-          <p className="text-slate-500 text-sm mt-1">Inspired by Patrick Bet-David</p>
+          <h1 className="text-4xl font-bold gradient-text mb-2">Referral Operations</h1>
+          <p className="text-slate-400">Governed lead-to-conversion workflow</p>
         </div>
         <div className="glass-card rounded-2xl p-8 shadow-2xl">
           <h2 className="text-xl font-semibold text-white mb-6 text-center">Sign In</h2>
@@ -83,18 +70,8 @@ export default function Login({ onLogin }) {
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
-          <div className="mt-4">
-            <button
-              onClick={handlePopulate}
-              className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium rounded-lg transition-colors text-sm"
-            >
-              Auto-Fill Demo Credentials
-            </button>
-          </div>
         </div>
-        <p className="text-center text-slate-600 text-xs mt-6">
-          Based on "Master The Art Of Referrals" by Patrick Bet-David
-        </p>
+        <p className="text-center text-slate-600 text-xs mt-6">Authorized operators only</p>
       </div>
     </div>
   );

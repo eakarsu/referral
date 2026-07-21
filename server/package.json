@@ -1,22 +1,28 @@
 {
   "name": "referral-mastery-server",
   "version": "1.0.0",
-  "description": "Referral Mastery Application - Backend",
+  "description": "Governed referral operations backend",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "seed": "node seed.js"
+    "migrate": "node migrate.js",
+    "create-admin": "node create-admin.js",
+    "worker": "node worker.js",
+    "test": "node --test --test-concurrency=1 ../tests/*.test.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
+    "express-rate-limit": "^8.0.0",
+    "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.13.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.7"
+    "nodemon": "^3.1.7",
+    "supertest": "^7.0.0"
   }
 }
