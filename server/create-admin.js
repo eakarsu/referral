@@ -3,10 +3,10 @@ const pool = require('./db');
 
 async function main() {
   if (process.env.BOOTSTRAP_ACKNOWLEDGEMENT !== 'create-initial-admin') throw new Error('Explicit administrator bootstrap acknowledgement is required');
-  const name = process.env.BOOTSTRAP_ADMIN_NAME;
-  const email = String(process.env.BOOTSTRAP_ADMIN_EMAIL || '').trim().toLowerCase();
-  const password = process.env.BOOTSTRAP_ADMIN_PASSWORD || '';
-  const organization = process.env.BOOTSTRAP_ORGANIZATION || process.env.BOOTSTRAP_TENANT_NAME || process.env.PROVISION_COMPANY_NAME;
+  const name = process.env.BOOTSTRAP_ADMIN_NAME || process.env.PROVISION_ADMIN_NAME || 'Runtime Administrator';
+  const email = String(process.env.BOOTSTRAP_ADMIN_EMAIL || process.env.PROVISION_ADMIN_EMAIL || '').trim().toLowerCase();
+  const password = process.env.BOOTSTRAP_ADMIN_PASSWORD || process.env.PROVISION_ADMIN_PASSWORD || '';
+  const organization = process.env.BOOTSTRAP_ORGANIZATION || process.env.BOOTSTRAP_TENANT_NAME || process.env.PROVISION_COMPANY_NAME || 'Runtime Acceptance Organization';
   if (!name || !email || !organization || password.length < 16) throw new Error('BOOTSTRAP_ORGANIZATION, BOOTSTRAP_ADMIN_NAME, BOOTSTRAP_ADMIN_EMAIL, and a 16+ character BOOTSTRAP_ADMIN_PASSWORD are required');
   const client = await pool.connect();
   try {

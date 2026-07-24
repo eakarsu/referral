@@ -23,6 +23,7 @@ function createApp({ providerTransport, allowTestProvider = false } = {}) {
   app.get('/api/health/ready', async (req, res) => { try { await verifyMigrations(pool); res.json({ status: 'ready' }); } catch { res.status(503).json({ status: 'not_ready' }); } });
   app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
   app.use('/api/auth', require('./routes/auth'));
+  app.use('/api/runtime-ai', require('./routes/runtime-ai'));
   app.use('/api/workflow', require('./routes/workflow'));
   app.use('/api', (req, res) => res.status(404).json({ error: 'API route not found' }));
   const staticDir = path.resolve(__dirname, '../client/dist');
