@@ -11,8 +11,13 @@ async function main() {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const org = await client.query('INSERT INTO organizations(name) VALUES($1) RETURNING id', [organization]);
-    await client.query('INSERT INTO users(organization_id,name,email,password_hash,role) VALUES($1,$2,$3,$4,$5)', [org.rows[0].id, name, email, await bcrypt.hash(password, 12), 'ADMIN']);
+    const existing = await client.query('SELECT id,organization_id FROM users WHERE lower(email)=lower($1) FOR UPDATE', [email]);
+    if (existing.rowCount) {
+      await client.query("UPDATE users SET name=$1,password_hash=$2,role='ADMIN' WHERE id=$3", [name, await bcrypt.hash(password, 12), existing.rows[0].id]);
+    } else {
+      const org = await client.query('INSERT INTO organizations(name) VALUES($1) RETURNING id', [organization]);
+      await client.query('INSERT INTO users(organization_id,name,email,password_hash,role) VALUES($1,$2,$3,$4,$5)', [org.rows[0].id, name, email, await bcrypt.hash(password, 12), 'ADMIN']);
+    }
     await client.query('COMMIT');
   } catch (error) { await client.query('ROLLBACK'); throw error; }
   finally { client.release(); await pool.end(); }

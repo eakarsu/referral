@@ -104,7 +104,7 @@ load_env_file
 : "${OPENROUTER_API_KEY:?OPENROUTER_API_KEY is required}"
 : "${OPENROUTER_MODEL:?OPENROUTER_MODEL is required}"
 [ "${OPENROUTER_BASE_URL:-}" = "https://openrouter.ai/api/v1" ] || { echo 'Exact OPENROUTER_BASE_URL is required' >&2; exit 1; }
-[ "$SERVER_PORT" = 30952 ] && [ "$FRONTEND_PORT" = 30953 ] || { echo 'Expected assigned ports 30952/30953' >&2; exit 1; }
+[[ "$SERVER_PORT" =~ ^[0-9]+$ && "$FRONTEND_PORT" =~ ^[0-9]+$ && "$SERVER_PORT" != "$FRONTEND_PORT" ]] || { echo 'Assigned ports must be distinct numbers' >&2; exit 1; }
 [ -d "$project_dir/server/node_modules" ] || { echo 'Server dependencies are missing' >&2; exit 1; }
 [ -d "$project_dir/client/node_modules" ] || { echo 'Client dependencies are missing' >&2; exit 1; }
 [ -f "$project_dir/client/dist/index.html" ] || { echo 'Client build is missing' >&2; exit 1; }
@@ -120,6 +120,10 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM HUP
 
+if [[ "${NODE_ENV:-development}" != production ]]; then
+  node "$project_dir/server/migrate.js"
+  BOOTSTRAP_ACKNOWLEDGEMENT=create-initial-admin node "$project_dir/server/create-admin.js"
+fi
 (cd "$project_dir/server" && exec node index.js) &
 children+=("$!")
 (cd "$project_dir/client" && exec env API_PROXY_TARGET="http://127.0.0.1:$SERVER_PORT" npm run preview -- --host 127.0.0.1 --port "$FRONTEND_PORT" --strictPort) &
