@@ -107,6 +107,7 @@ load_env_file
 [[ "$SERVER_PORT" =~ ^[0-9]+$ && "$FRONTEND_PORT" =~ ^[0-9]+$ && "$SERVER_PORT" != "$FRONTEND_PORT" ]] || { echo 'Assigned ports must be distinct numbers' >&2; exit 1; }
 [ -d "$project_dir/server/node_modules" ] || { echo 'Server dependencies are missing' >&2; exit 1; }
 [ -d "$project_dir/client/node_modules" ] || { echo 'Client dependencies are missing' >&2; exit 1; }
+(cd "$project_dir/client" && npm run build)
 [ -f "$project_dir/client/dist/index.html" ] || { echo 'Client build is missing' >&2; exit 1; }
 for app_port in "$SERVER_PORT" "$FRONTEND_PORT"; do
   lsof -nP -iTCP:"$app_port" -sTCP:LISTEN >/dev/null 2>&1 && { echo "Port $app_port is already in use" >&2; exit 1; }
