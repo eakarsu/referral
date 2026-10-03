@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import SectionSidebar from '../components/SectionSidebar';
 import { get, patch, post } from '../api';
 
 const blankLead = { firstName: '', lastName: '', email: '', accountName: '', phone: '', privacyRegion: 'US_CAN_SPAM', source: '' };
@@ -92,7 +93,14 @@ export default function Operations({ user, onLogout }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-slate-950 text-slate-100 codex-section-shell">
+      <SectionSidebar title="Referral Operations" items={[
+        { href: '#capture-referral', label: 'Capture Referral' },
+        { href: '#lead-lifecycle', label: 'Lead Lifecycle' },
+        ...(canReview ? [{ href: '#approval-queue', label: 'Approval Queue' }, { href: '#providers', label: 'Providers' }] : []),
+        ...(user.role === 'ADMIN' ? [{ href: '#administration', label: 'Administration' }] : []),
+      ]} />
+      <div className="codex-section-content">
       <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/95 px-6 py-4 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <div><h1 className="text-xl font-bold">Referral Operations</h1><p className="text-xs text-slate-400">Governed lead-to-conversion workflow</p></div>
@@ -111,9 +119,9 @@ export default function Operations({ user, onLogout }) {
           <Metric label="Quarantined sync" value={metrics.dataQuality.syncQuarantined} />
         </section>}
 
-        {user.role === 'ADMIN' && <section className={classes.panel}><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">Administration</h2><p className="text-sm text-slate-400">Create accountable team members and contract-backed provider connections.</p></div><div className="flex gap-2"><button className={classes.secondary} disabled={busy} onClick={() => setShowUserForm((value) => !value)}>Add team member</button><button className={classes.secondary} disabled={busy} onClick={createProvider}>Add provider</button></div></div>{showUserForm && <form onSubmit={createUser} className="mt-4 grid gap-3 rounded-lg border border-slate-800 p-3 md:grid-cols-5"><input aria-label="Team member name" placeholder="Name" className={classes.input} value={newUser.name} required onChange={(e) => setNewUser({ ...newUser, name: e.target.value })} /><input aria-label="Team member email" placeholder="Email" type="email" className={classes.input} value={newUser.email} required onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} /><select aria-label="Team member role" className={classes.input} value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}><option>AGENT</option><option>MANAGER</option><option>ADMIN</option></select><input aria-label="Temporary password" placeholder="16+ character temporary password" type="password" minLength="16" className={classes.input} value={newUser.password} required onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} /><button className={classes.button} disabled={busy}>Create user</button></form>}<div className="mt-3 flex flex-wrap gap-2">{users.map((item) => <Badge key={item.id}>{item.name} · {item.role}</Badge>)}</div></section>}
+        {user.role === 'ADMIN' && <section className={classes.panel} id="administration"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">Administration</h2><p className="text-sm text-slate-400">Create accountable team members and contract-backed provider connections.</p></div><div className="flex gap-2"><button className={classes.secondary} disabled={busy} onClick={() => setShowUserForm((value) => !value)}>Add team member</button><button className={classes.secondary} disabled={busy} onClick={createProvider}>Add provider</button></div></div>{showUserForm && <form onSubmit={createUser} className="mt-4 grid gap-3 rounded-lg border border-slate-800 p-3 md:grid-cols-5"><input aria-label="Team member name" placeholder="Name" className={classes.input} value={newUser.name} required onChange={(e) => setNewUser({ ...newUser, name: e.target.value })} /><input aria-label="Team member email" placeholder="Email" type="email" className={classes.input} value={newUser.email} required onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} /><select aria-label="Team member role" className={classes.input} value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}><option>AGENT</option><option>MANAGER</option><option>ADMIN</option></select><input aria-label="Temporary password" placeholder="16+ character temporary password" type="password" minLength="16" className={classes.input} value={newUser.password} required onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} /><button className={classes.button} disabled={busy}>Create user</button></form>}<div className="mt-3 flex flex-wrap gap-2">{users.map((item) => <Badge key={item.id}>{item.name} · {item.role}</Badge>)}</div></section>}
 
-        <section className={classes.panel}>
+        <section className={classes.panel} id="capture-referral">
           <h2 className="mb-1 text-lg font-semibold">Capture an attributed referral</h2>
           <p className="mb-4 text-sm text-slate-400">Email is deduplicated per organization. Consent must arrive independently from the configured consent source.</p>
           <form onSubmit={create} className="grid gap-3 md:grid-cols-4">
@@ -123,7 +131,7 @@ export default function Operations({ user, onLogout }) {
           </form>
         </section>
 
-        <section className={classes.panel}>
+        <section className={classes.panel} id="lead-lifecycle">
           <div className="mb-4 flex items-center justify-between"><div><h2 className="text-lg font-semibold">Lead lifecycle</h2><p className="text-sm text-slate-400">Ownership, review and optimistic version checks are enforced server-side.</p></div><button className={classes.secondary} onClick={() => load().catch((err) => setError(err.message))}>Refresh</button></div>
           <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr><th className="p-2">Lead</th><th className="p-2">Account</th><th className="p-2">Lifecycle</th><th className="p-2">Consent</th><th className="p-2">Owner</th><th className="p-2">Actions</th></tr></thead><tbody>
             {leads.map((lead) => <tr key={lead.id} className="border-t border-slate-800"><td className="p-2"><div>{lead.first_name} {lead.last_name}</div><div className="text-xs text-slate-500">{lead.email}</div></td><td className="p-2">{lead.account_name || '—'}</td><td className="p-2"><Badge>{lead.lifecycle}</Badge></td><td className="p-2"><Badge>{lead.consent_status}</Badge></td><td className="p-2">{lead.owner_name || 'Unassigned'}</td><td className="flex flex-wrap gap-2 p-2">
@@ -140,16 +148,17 @@ export default function Operations({ user, onLogout }) {
           </tbody></table></div>
         </section>
 
-        {canReview && <section className="grid gap-5 lg:grid-cols-2">
+        {canReview && <section className="grid gap-5 lg:grid-cols-2" id="approval-queue">
           <div className={classes.panel}><h2 className="mb-3 text-lg font-semibold">Human approval queue</h2><QueueList title="Ownership" empty="No handoffs awaiting action." rows={queue.handoffs} render={(item) => <div><p>{item.first_name} {item.last_name}: {item.from_name || 'Unassigned'} → {item.to_name}</p><p className="text-xs text-slate-500">{item.status} · {item.reason}</p>{item.status === 'REQUESTED' && <button className={`${classes.button} mt-2`} disabled={busy || item.requested_by_id === user.id || item.to_user_id === user.id} onClick={() => act(() => post(`/workflow/handoffs/${item.id}/review`, { decision: 'approve' }), 'Handoff approved; target owner must accept.')}>Approve</button>}</div>} />
           <QueueList title="Outreach" empty="No drafts awaiting review." rows={queue.outreach} render={(item) => <div><p>{item.first_name} {item.last_name}: {item.subject}</p><p className="line-clamp-2 text-xs text-slate-500">{item.body}</p><button className={`${classes.button} mt-2`} disabled={busy || item.requester_user_id === user.id} onClick={() => act(() => post(`/workflow/outreach/${item.id}/review`, { decision: 'approve', reason: 'Content and compliance reviewed' }), 'Outreach approved and queued.')}>Approve & queue</button></div>} /></div>
           <div className={classes.panel}><div className="flex items-center justify-between"><h2 className="text-lg font-semibold">Integration outbox</h2><button className={classes.button} disabled={busy} onClick={() => act(() => post('/workflow/operations/run', { limit: 25 }), 'Due operations processed.')}>Run due work</button></div><div className="mt-3 space-y-2">{queue.operations.map((item) => <div key={item.id} className="rounded-lg border border-slate-800 p-3 text-sm"><div className="flex justify-between"><span>{item.kind} · {item.provider_name}</span><Badge>{item.status}</Badge></div>{item.last_error && <p className="mt-1 text-xs text-red-300">{item.last_error}</p>}</div>)}{!queue.operations.length && <p className="text-sm text-slate-500">No due or failed operations.</p>}</div></div>
         </section>}
 
-        {canReview && <section className={classes.panel}><h2 className="mb-3 text-lg font-semibold">Governed providers</h2><div className="grid gap-2 md:grid-cols-3">{providers.map((item) => <div key={item.id} className="rounded-lg border border-slate-800 p-3 text-sm"><div className="flex justify-between"><span>{item.name}</span><Badge>{item.type}</Badge></div><p className="mt-1 text-xs text-slate-500">{item.active ? 'Active' : 'Inactive'} · contract {item.contract_ref}</p><p className="text-xs text-slate-500">Credentials: {item.tokenConfigured && item.webhookSecretConfigured ? 'configured' : 'missing'}</p>{user.role === 'ADMIN' && <button className={`${classes.secondary} mt-2`} disabled={busy || (!item.active && !(item.tokenConfigured && item.webhookSecretConfigured))} onClick={() => act(() => patch(`/workflow/providers/${item.id}`, { active: !item.active }), `Provider ${item.active ? 'deactivated' : 'activated'}.`)}>{item.active ? 'Deactivate' : 'Activate'}</button>}</div>)}</div></section>}
+        {canReview && <section className={classes.panel} id="providers"><h2 className="mb-3 text-lg font-semibold">Governed providers</h2><div className="grid gap-2 md:grid-cols-3">{providers.map((item) => <div key={item.id} className="rounded-lg border border-slate-800 p-3 text-sm"><div className="flex justify-between"><span>{item.name}</span><Badge>{item.type}</Badge></div><p className="mt-1 text-xs text-slate-500">{item.active ? 'Active' : 'Inactive'} · contract {item.contract_ref}</p><p className="text-xs text-slate-500">Credentials: {item.tokenConfigured && item.webhookSecretConfigured ? 'configured' : 'missing'}</p>{user.role === 'ADMIN' && <button className={`${classes.secondary} mt-2`} disabled={busy || (!item.active && !(item.tokenConfigured && item.webhookSecretConfigured))} onClick={() => act(() => patch(`/workflow/providers/${item.id}`, { active: !item.active }), `Provider ${item.active ? 'deactivated' : 'activated'}.`)}>{item.active ? 'Deactivate' : 'Activate'}</button>}</div>)}</div></section>}
 
         {selected && <section className={classes.panel}><div className="flex justify-between"><h2 className="text-lg font-semibold">Journey evidence: {selected.lead.first_name} {selected.lead.last_name}</h2><button className={classes.secondary} onClick={() => setSelected(null)}>Close</button></div><pre className="mt-3 max-h-96 overflow-auto rounded-lg bg-black/30 p-3 text-xs text-slate-300">{JSON.stringify(selected, null, 2)}</pre></section>}
       </main>
+      </div>
     </div>
   );
 }
