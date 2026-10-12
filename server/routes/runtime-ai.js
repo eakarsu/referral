@@ -51,4 +51,14 @@ router.post('/referral-operations-review', auth, async (req, res, next) => {
   }
 });
 
+router.get('/history', auth, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      'SELECT id,feature,input,output,model,created_at FROM runtime_ai_interactions WHERE organization_id=$1 AND user_id=$2 ORDER BY created_at DESC LIMIT 50',
+      [req.user.organizationId, req.user.id]
+    );
+    res.json({ items: result.rows });
+  } catch (error) { next(error); }
+});
+
 module.exports = router;

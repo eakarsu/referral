@@ -1,3 +1,4 @@
+import NativeAIReadiness from './pages/NativeAIReadiness';
 import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { api } from './api';
@@ -22,5 +23,5 @@ export default function App() {
   const logout = () => { localStorage.removeItem('token'); setToken(null); setUser(null); navigate('/login'); };
   if (loading) return <div className="min-h-screen grid place-items-center bg-slate-950 text-slate-300">Validating session…</div>;
   if (!token || !user) return <Routes><Route path="/login" element={<Login onLogin={login} />} /><Route path="*" element={<Navigate to="/login" replace />} /></Routes>;
-  return <Routes><Route path="/" element={<Operations user={user} onLogout={logout} />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes>;
+  return <Routes><Route path="/" element={<><nav><a href="#ai-readiness">AI workspace</a></nav><Operations user={user} onLogout={logout} /><NativeAIReadiness/></>} /><Route path="*" element={<Navigate to="/" replace />} /></Routes>;
 }
