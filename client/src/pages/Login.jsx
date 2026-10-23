@@ -1,24 +1,20 @@
-import { useRef as useDemoLoginRef, useState as useDemoLoginState } from 'react';
 import React, { useState } from 'react';
 import { api } from '../api';
 
 export default function Login({ onLogin }) {
-  const demoLoginLock = useDemoLoginRef(false);
-  const [demoLoginBusy, setDemoLoginBusy] = useDemoLoginState(false);
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e, demoLoginCredentials) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
       const data = await api('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email: (demoLoginCredentials?.email ?? email), password: (demoLoginCredentials?.password ?? password) }),
+        body: JSON.stringify({ email, password }),
         headers: { 'Content-Type': 'application/json' },
       });
       onLogin(data.token);
@@ -67,32 +63,14 @@ export default function Login({ onLogin }) {
               />
             </div>
             <button
-              type="button"
-              onClick={async (event) => {
- if (demoLoginLock.current) return;
- demoLoginLock.current = true; setDemoLoginBusy(true);
- const values = {};
- const captureDemoValue = (key, value) => { values[key] = value; return value; };
- try {
-  await (async () => { setEmail(captureDemoValue("email", import.meta.env.VITE_DEMO_EMAIL || '')); setPassword(captureDemoValue("password", import.meta.env.VITE_DEMO_PASSWORD || '')); })(event);
-  if (values.error || typeof values.email !== 'string' || !values.email || typeof values.password !== 'string' || !values.password) { setError(typeof values.error === 'string' ? values.error : 'Demo credentials are unavailable.'); return; }
-  await handleSubmit(event, { email: values.email, password: values.password });
- } finally { demoLoginLock.current = false; setDemoLoginBusy(false); }
-}}
-              disabled={demoLoginBusy || (!import.meta.env.VITE_DEMO_EMAIL || !import.meta.env.VITE_DEMO_PASSWORD)}
-              aria-label="Log In as Demo"
-              style={{ width: '100%', marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', border: '1px solid currentColor', background: 'transparent', cursor: 'pointer' }}
-            >
-              Log In as Demo
-            </button>
-            <button
               type="submit"
               disabled={loading}
               className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-500 hover:to-purple-500 transition-all disabled:opacity-50"
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
-          </form>
+          <button type="button" onClick={(e) => { e.preventDefault(); setEmail('admin@demo.local'); setPassword('Demo!23456'); }}>Log In as Demo</button>
+        </form>
         </div>
         <p className="text-center text-slate-600 text-xs mt-6">Authorized operators only</p>
       </div>

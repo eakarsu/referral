@@ -7,6 +7,7 @@ const { appendAudit, verifyAudit } = require('../workflow/audit');
 const { runOperations } = require('../workflow/provider');
 const { validateProviderUrl, verifyHmac } = require('../workflow/security');
 const service = require('../workflow/service');
+const features = require('../lib/features');
 
 const router = express.Router();
 const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
@@ -108,7 +109,7 @@ router.get('/leads', asyncRoute(async (req, res) => {
   let ownership = '';
   if (req.user.role === 'AGENT') { values.push(req.user.id); ownership = 'AND l.owner_user_id=$2'; }
   const result = await pool.query(`SELECT l.*,a.name AS account_name,u.name AS owner_name FROM leads l LEFT JOIN accounts a ON a.id=l.account_id LEFT JOIN users u ON u.id=l.owner_user_id WHERE l.organization_id=$1 ${ownership} ORDER BY l.created_at DESC LIMIT 200`, values);
-  res.json(result.rows);
+  res.json(features.filterLeads(result.rows, req.query));
 }));
 router.post('/leads', roles('ADMIN','MANAGER','AGENT'), asyncRoute(async (req, res) => res.status(201).json(await service.createLead(pool, req.user, req.body))));
 router.get('/leads/:id/journey', asyncRoute(async (req, res) => res.json(await service.journey(pool, req.user, req.params.id))));
@@ -153,6 +154,49 @@ router.post('/operations/:id/retry', roles('ADMIN'), asyncRoute(async (req, res)
     await client.query('COMMIT'); res.json(result.rows[0]);
   } catch (error) { await client.query('ROLLBACK'); throw error; }
   finally { client.release(); }
+}));
+router.get('/leads/export', asyncRoute(async (req, res) => {
+  const values=[req.user.organizationId]; let ownership='';
+  if(req.user.role==='AGENT'){ values.push(req.user.id); ownership='AND l.owner_user_id=$2'; }
+  const result=await pool.query(`SELECT l.*,a.name AS account_name FROM leads l LEFT JOIN accounts a ON a.id=l.account_id WHERE l.organization_id=$1 ${ownership} ORDER BY l.created_at DESC LIMIT 500`,values);
+  const rows=features.filterLeads(result.rows, req.query);
+  if(String(req.query.format||'csv').toLowerCase()==='json') return res.json({rows});
+  res.setHeader('Content-Type','text/csv'); res.setHeader('Content-Disposition','attachment; filename="leads.csv"'); return res.send(features.toCsv(rows));
+}));
+router.get('/tasks', asyncRoute(async (req, res) => {
+  const result=await pool.query('SELECT * FROM tasks WHERE organization_id=$1 ORDER BY created_at DESC LIMIT 200',[req.user.organizationId]);
+  return res.json({rows: features.filterLeads(result.rows, req.query)});
+}));
+router.post('/tasks', roles('ADMIN','MANAGER','AGENT'), asyncRoute(async (req, res) => {
+  const title=String(req.body.title||'').trim(); if(!title) return res.status(400).json({error:'title is required'});
+  const r=await pool.query('INSERT INTO tasks(organization_id,lead_id,title,status,priority,assignee_id,due_at,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',[req.user.organizationId,req.body.lead_id||null,title,req.body.status||'open',req.body.priority||'medium',req.body.assignee_id||null,req.body.due_at||null,req.user.id]);
+  return res.status(201).json(r.rows[0]);
+}));
+router.patch('/tasks/:id', roles('ADMIN','MANAGER','AGENT'), asyncRoute(async (req, res) => {
+  const r=await pool.query('UPDATE tasks SET title=COALESCE($1,title),status=COALESCE($2,status),priority=COALESCE($3,priority),assignee_id=COALESCE($4,assignee_id),due_at=COALESCE($5,due_at),updated_at=now() WHERE id=$6 AND organization_id=$7 RETURNING *',[req.body.title||null,req.body.status||null,req.body.priority||null,req.body.assignee_id||null,req.body.due_at||null,req.params.id,req.user.organizationId]);
+  if(!r.rowCount) return res.status(404).json({error:'Task not found'}); return res.json(r.rows[0]);
+}));
+const DOMAIN_AI_FEATURES = [
+  { id: 'lead-priority', title: 'Lead priority scoring', source: 'leads' },
+  { id: 'consent-gap', title: 'Consent gap review', source: 'leads' },
+  { id: 'handoff-brief', title: 'Handoff bottleneck brief', source: 'handoffs' },
+];
+router.get('/ai/domain', asyncRoute(async (req, res) => {
+  res.json({ features: DOMAIN_AI_FEATURES, providerConfigured: Boolean(features.providerConfig(process.env)) });
+}));
+router.post('/ai/domain/:featureId', asyncRoute(async (req, res) => {
+  const feature = DOMAIN_AI_FEATURES.find((f) => f.id === req.params.featureId);
+  if (!feature) return res.status(404).json({ error: 'Unknown AI feature' });
+  let rows;
+  if (feature.source === 'handoffs') {
+    rows = (await pool.query('SELECT * FROM handoffs WHERE organization_id=$1 ORDER BY created_at DESC LIMIT 200', [req.user.organizationId])).rows;
+  } else {
+    const values = [req.user.organizationId]; let ownership = '';
+    if (req.user.role === 'AGENT') { values.push(req.user.id); ownership = 'AND l.owner_user_id=$2'; }
+    rows = (await pool.query(`SELECT l.* FROM leads l WHERE l.organization_id=$1 ${ownership} ORDER BY l.created_at DESC LIMIT 200`, values)).rows;
+  }
+  const fallback = { 'lead-priority': features.leadPriority, 'consent-gap': features.consentGap, 'handoff-brief': features.handoffBrief }[feature.id](rows);
+  return res.json(await features.maybeProvider(feature.id, fallback));
 }));
 router.get('/metrics', roles('ADMIN','MANAGER'), asyncRoute(async (req, res) => res.json(await service.metrics(pool, req.user.organizationId))));
 router.get('/audit/verify', roles('ADMIN'), asyncRoute(async (req, res) => {

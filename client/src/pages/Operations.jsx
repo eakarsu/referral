@@ -24,16 +24,27 @@ export default function Operations({ user, onLogout }) {
   const [busy, setBusy] = useState(false);
   const [showUserForm, setShowUserForm] = useState(false);
   const [newUser, setNewUser] = useState({ name: '', email: '', role: 'AGENT', password: '' });
+  const [search, setSearch] = useState('');
+  const [lifecycleFilter, setLifecycleFilter] = useState('');
+  const [tasks, setTasks] = useState([]);
+  const [taskTitle, setTaskTitle] = useState('');
+  const [aiFeatures, setAiFeatures] = useState([]);
+  const [aiResult, setAiResult] = useState(null);
+  const [aiMessage, setAiMessage] = useState('');
   const canReview = ['ADMIN', 'MANAGER'].includes(user.role);
 
   const load = useCallback(async () => {
-    const [leadRows, userRows, assignedRows] = await Promise.all([get('/workflow/leads'), get('/workflow/users'), get('/workflow/handoffs/mine')]);
-    setLeads(leadRows); setUsers(userRows); setMyHandoffs(assignedRows);
+    const params = new URLSearchParams();
+    if (search) params.set('q', search);
+    if (lifecycleFilter) params.set('lifecycle', lifecycleFilter);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const [leadRows, userRows, assignedRows, taskRows, aiMeta] = await Promise.all([get(`/workflow/leads${qs}`), get('/workflow/users'), get('/workflow/handoffs/mine'), get('/workflow/tasks'), get('/workflow/ai/domain')]);
+    setLeads(leadRows); setUsers(userRows); setMyHandoffs(assignedRows); setTasks(taskRows.rows || []); setAiFeatures(aiMeta.features || []);
     if (canReview) {
       const [queueRows, metricRows, providerRows] = await Promise.all([get('/workflow/queue'), get('/workflow/metrics'), get('/workflow/providers')]);
       setQueue(queueRows); setMetrics(metricRows); setProviders(providerRows);
     }
-  }, [canReview]);
+  }, [canReview, search, lifecycleFilter]);
 
   useEffect(() => { load().catch((err) => setError(err.message)); }, [load]);
   const agents = useMemo(() => users.filter((item) => ['AGENT', 'MANAGER'].includes(item.role) && item.id !== user.id), [users, user.id]);
@@ -65,6 +76,33 @@ export default function Operations({ user, onLogout }) {
     setError('');
     try { setSelected(await get(`/workflow/leads/${lead.id}/journey`)); }
     catch (err) { setError(err.message); }
+  };
+  const createTask = (event) => {
+    event.preventDefault();
+    if (!taskTitle.trim()) return;
+    act(async () => { await post('/workflow/tasks', { title: taskTitle.trim() }); setTaskTitle(''); }, 'Task created.');
+  };
+  const toggleTask = (task) => act(() => patch(`/workflow/tasks/${task.id}`, { status: task.status === 'done' ? 'open' : 'done' }), 'Task updated.');
+  const runAi = async (featureId) => {
+    setAiMessage('Running domain analysis…');
+    try {
+      const result = await post(`/workflow/ai/domain/${featureId}`, {});
+      setAiResult(result);
+      setAiMessage(result.aiGenerated ? 'AI-generated result.' : 'Deterministic fallback — no AI provider configured (aiGenerated: false).');
+    } catch (err) { setAiMessage(err.message); }
+  };
+  const exportLeads = async (format) => {
+    const params = new URLSearchParams();
+    if (search) params.set('q', search);
+    if (lifecycleFilter) params.set('lifecycle', lifecycleFilter);
+    params.set('format', format);
+    try {
+      const res = await fetch(`/api/workflow/leads/export?${params.toString()}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `leads.${format === 'json' ? 'json' : 'csv'}`; a.click(); URL.revokeObjectURL(url);
+    } catch (err) { setError(err.message); }
   };
   const createUser = (event) => {
     event.preventDefault();
@@ -133,6 +171,15 @@ export default function Operations({ user, onLogout }) {
 
         <section className={classes.panel} id="lead-lifecycle">
           <div className="mb-4 flex items-center justify-between"><div><h2 className="text-lg font-semibold">Lead lifecycle</h2><p className="text-sm text-slate-400">Ownership, review and optimistic version checks are enforced server-side.</p></div><button className={classes.secondary} onClick={() => load().catch((err) => setError(err.message))}>Refresh</button></div>
+          <div className="mb-4 flex flex-wrap gap-2">
+            <input aria-label="Search leads" placeholder="Search leads" className={`${classes.input} max-w-xs`} value={search} onChange={(e) => setSearch(e.target.value)} />
+            <select aria-label="Filter by lifecycle" className={`${classes.input} max-w-xs`} value={lifecycleFilter} onChange={(e) => setLifecycleFilter(e.target.value)}>
+              <option value="">All lifecycles</option>
+              {['NEW', 'ASSIGNED', 'QUALIFIED', 'OUTREACH_READY', 'ENGAGED', 'CONVERTED', 'DISQUALIFIED'].map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <button type="button" className={classes.secondary} onClick={() => exportLeads('csv')}>Export CSV</button>
+            <button type="button" className={classes.secondary} onClick={() => exportLeads('json')}>Export JSON</button>
+          </div>
           <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr><th className="p-2">Lead</th><th className="p-2">Account</th><th className="p-2">Lifecycle</th><th className="p-2">Consent</th><th className="p-2">Owner</th><th className="p-2">Actions</th></tr></thead><tbody>
             {leads.map((lead) => <tr key={lead.id} className="border-t border-slate-800"><td className="p-2"><div>{lead.first_name} {lead.last_name}</div><div className="text-xs text-slate-500">{lead.email}</div></td><td className="p-2">{lead.account_name || '—'}</td><td className="p-2"><Badge>{lead.lifecycle}</Badge></td><td className="p-2"><Badge>{lead.consent_status}</Badge></td><td className="p-2">{lead.owner_name || 'Unassigned'}</td><td className="flex flex-wrap gap-2 p-2">
               <button className={classes.secondary} onClick={() => inspect(lead)}>Journey</button>
@@ -146,6 +193,24 @@ export default function Operations({ user, onLogout }) {
             </td></tr>)}
             {!leads.length && <tr><td colSpan="6" className="p-6 text-center text-slate-500">No leads yet.</td></tr>}
           </tbody></table></div>
+        </section>
+
+        <section className={classes.panel} id="tasks">
+          <h2 className="mb-1 text-lg font-semibold">Tasks</h2>
+          <p className="mb-4 text-sm text-slate-400">Authenticated follow-up tasks for this organization.</p>
+          <form onSubmit={createTask} className="mb-4 flex gap-2">
+            <input aria-label="New task title" placeholder="New task title" className={classes.input} value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} />
+            <button className={classes.button} disabled={busy || !taskTitle.trim()}>Add task</button>
+          </form>
+          <div className="space-y-2">{tasks.map((task) => <div key={task.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 p-3 text-sm"><span>{task.title} · <Badge>{task.status}</Badge> <span className="text-slate-500">{task.priority}</span></span><button className={classes.secondary} disabled={busy} onClick={() => toggleTask(task)}>{task.status === 'done' ? 'Reopen' : 'Complete'}</button></div>)}{!tasks.length && <p className="text-sm text-slate-500">No tasks yet.</p>}</div>
+        </section>
+
+        <section className={classes.panel} id="domain-ai">
+          <h2 className="mb-1 text-lg font-semibold">Domain AI (app records)</h2>
+          <p className="mb-4 text-sm text-slate-400">Domain-grounded analysis over this app&apos;s own leads and handoffs. Without a provider key it returns a clearly labelled deterministic fallback (aiGenerated: false).</p>
+          <div className="flex flex-wrap gap-2">{aiFeatures.map((f) => <button key={f.id} type="button" className={classes.secondary} onClick={() => runAi(f.id)}>{f.title}</button>)}</div>
+          {aiMessage && <p role="status" className="mt-3 text-sm text-slate-400">{aiMessage}</p>}
+          {aiResult && <div className="mt-4 space-y-3"><p className="text-xs uppercase text-slate-500">{aiResult.aiGenerated ? `AI-generated via ${aiResult.provider || 'provider'}` : 'Deterministic fallback — no AI provider configured (aiGenerated: false)'}</p><AiValue value={aiResult} /></div>}
         </section>
 
         {canReview && <section className="grid gap-5 lg:grid-cols-2" id="approval-queue">
@@ -163,6 +228,17 @@ export default function Operations({ user, onLogout }) {
   );
 }
 
+function AiValue({ value }) {
+  if (value === null || value === undefined) return <span className="text-slate-500">Not supplied</span>;
+  if (typeof value === 'boolean') return <span>{value ? 'true' : 'false'}</span>;
+  if (typeof value === 'number') return <span>{String(value)}</span>;
+  if (typeof value === 'string') return <span>{value === '' ? <em>Empty string</em> : value}</span>;
+  if (Array.isArray(value)) {
+    if (!value.length) return <span className="text-slate-500">No items returned.</span>;
+    return <ul className="list-disc space-y-1 pl-5">{value.map((item, i) => <li key={i}><AiValue value={item} /></li>)}</ul>;
+  }
+  return <div className="space-y-2">{Object.entries(value).map(([key, item]) => <section key={key} className="rounded-lg border border-slate-800 p-3"><h3 className="mb-1 text-sm font-semibold">{key.replace(/([a-z])([A-Z])/g, '$1 $2')}</h3><AiValue value={item} /></section>)}</div>;
+}
 function Metric({ label, value }) { return <div className={classes.panel}><p className="text-xs uppercase text-slate-500">{label}</p><p className="mt-1 text-2xl font-bold">{value}</p></div>; }
 function Badge({ children }) { return <span className="inline-flex rounded-full border border-slate-700 bg-slate-800 px-2 py-1 text-[11px] font-medium text-slate-300">{children}</span>; }
 function QueueList({ title, rows, empty, render }) { return <div className="mt-4"><h3 className="mb-2 text-sm font-medium text-slate-300">{title}</h3><div className="space-y-2">{rows.map((item) => <div className="rounded-lg border border-slate-800 p-3 text-sm" key={item.id}>{render(item)}</div>)}{!rows.length && <p className="text-sm text-slate-500">{empty}</p>}</div></div>; }

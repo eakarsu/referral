@@ -1,6 +1,7 @@
 const express = require('express');
 const auth = require('../middleware/auth');
 const pool = require('../db');
+const features = require('../lib/features');
 
 const router = express.Router();
 
@@ -61,4 +62,7 @@ router.get('/history', auth, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+router.post('/lead-priority', auth, async (req, res) => { const rows=Array.isArray(req.body?.rows)?req.body.rows:[]; return res.json(await features.maybeProvider('lead-priority', features.leadPriority(rows))); });
+router.post('/consent-gap', auth, async (req, res) => { const rows=Array.isArray(req.body?.rows)?req.body.rows:[]; return res.json(await features.maybeProvider('consent-gap', features.consentGap(rows))); });
+router.post('/handoff-brief', auth, async (req, res) => { const rows=Array.isArray(req.body?.rows)?req.body.rows:[]; return res.json(await features.maybeProvider('handoff-brief', features.handoffBrief(rows))); });
 module.exports = router;
